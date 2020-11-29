@@ -1,13 +1,34 @@
 import { Request, Response } from "express";
+import { Server } from "socket.io";
+import { DialogModel } from "../models";
 
 import MessageModel from "../models/Message";
 
 class MessageController {
+  io: Server;
+
+  constructor(io: Server) {
+    this.io = io;
+  }
+
   index(req: Request, res: Response) {
     const dialogId = req.query.dialogId as string;
+    const userId = req.user?._id as string;
+
+    MessageModel.updateMany(
+      { dialog: dialogId, user: { $ne: userId } },
+      { isChecked: true },
+      (err) => {
+        if (err) {
+          res.status(500).json(err);
+        } else {
+          this.io.emit("MESSAGES_CHECKED", userId, dialogId);
+        }
+      }
+    );
 
     MessageModel.find({ dialog: dialogId })
-      .populate(["dialog", "user"])
+      .populate(["user"])
       .exec((err, messages) => {
         if (err) {
           return res.status(404).json({
@@ -16,45 +37,82 @@ class MessageController {
         }
         return res.json(messages);
       });
-
-    // MessageModel.find()
-    //   .or([{ author: userId }, { partner: userId }])
-    //   .exec(function (err, dialogs) {
-    //     if (err) {
-    //       return res.status(404).json({
-    //         message: "Dialogs not found",
-    //       });
-    //     }
-    //     return res.json(dialogs);
-    //   });
   }
 
   create(req: Request, res: Response) {
-    // const userId: string | undefined = req.user?._id;
-    const userId: string = "5fb3a42fa2e18adee494a3aa";
+    const userId = req.user?._id as string;
+
     const { text, dialogId } = req.body;
 
-    const postData = { text, dialog: dialogId, user: userId };
-
-    const message = new MessageModel(postData);
+    const message = new MessageModel({
+      text,
+      dialog: dialogId,
+      user: userId,
+    });
 
     message
       .save()
-      .then((obj) => res.json(obj))
-      .catch((err) => res.json(err.message));
+      .then((obj) => {
+        obj.populate("user", (err, message) => {
+          if (err) {
+            return res.status(500).json({
+              message: err,
+            });
+          }
+
+          DialogModel.findOneAndUpdate(
+            { _id: dialogId },
+            { lastMessage: message._id },
+            { upsert: true },
+            (err) => {
+              if (err) {
+                return res.status(500).json({
+                  message: err,
+                });
+              }
+            }
+          );
+          res.json(message);
+          this.io.emit("NEW_MESSAGE", message);
+        });
+      })
+      .catch((err) => res.json(err));
   }
 
   delete(req: Request, res: Response) {
-    const id = req.params.id;
-    MessageModel.findOneAndDelete({ _id: id })
-      .then((message) => {
-        if (message) {
-          res.json({
-            message: "Message deleted successfully",
+    const _id = req.params.id;
+
+    MessageModel.findById({ _id }, (err, message) => {
+      if (err || !message) {
+        return res.status(404).json(err);
+      }
+
+      const dialogId = message.dialog;
+      this.io.emit("REMOVE_MESSAGE", message);
+
+      message.remove();
+
+      MessageModel.findOne({ dialog: dialogId })
+        .sort({ createdAt: -1 })
+        .exec((err, lastMessage) => {
+          if (err || !lastMessage) {
+            return res.status(404).json(err);
+          }
+
+          DialogModel.findById(dialogId, (err, dialog) => {
+            if (err || !dialog) {
+              return res.status(404).json(err);
+            }
+            dialog.lastMessage = lastMessage._id;
+            dialog.save();
+
+            res.json({
+              message: "Message removed successfully",
+            });
+            this.io.emit("UPDATE_LAST_MESSAGE", lastMessage);
           });
-        }
-      })
-      .catch((err) => res.json(err));
+        });
+    });
   }
 }
 export default MessageController;

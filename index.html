@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.1/socket.io.js"></script>
+  </head>
+  <body>
+    <script>
+      window.onload = function () {
+        const socket = io("http://localhost:3003", {
+          transports: ["websocket", "polling", "flashsocket"],
+        });
+        window.socket = socket;
+
+        socket.on("SERVER:DIALOG_CREATED", function (obj) {
+          console.log(obj);
+        });
+        socket.on("NEW_MESSAGE", function (msg) {
+          if (window.user !== msg.user) {
+
+
+            console.log(msg);
+          }
+        });
+      };
+    </script>
+  </body>
+</html>
