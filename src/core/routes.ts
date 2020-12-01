@@ -1,21 +1,23 @@
 import bodyParser from "body-parser";
 import { Express } from "express";
 import { Server } from "socket.io";
+import uploader from "./multer";
 
 import { updateLastSeen, checkAuth } from "../middlewares";
-
 import { signinValidation, signupValidation } from "../utils";
 
 import {
   UserController,
   DialogController,
   MessageController,
+  AttachmentController,
 } from "../controllers";
 
 export default (app: Express, io: Server) => {
   const User = new UserController(io);
   const Dialog = new DialogController(io);
   const Message = new MessageController(io);
+  const Attachment = new AttachmentController();
 
   app.use(bodyParser.json());
   app.use(checkAuth);
@@ -31,9 +33,11 @@ export default (app: Express, io: Server) => {
 
   app.get("/dialogs", Dialog.index);
   app.post("/dialogs/create", Dialog.create);
-  // app.delete("/dialogs/:id", Dialog.delete);
 
   app.get("/messages", Message.index.bind(Message));
   app.post("/messages", Message.create.bind(Message));
   app.delete("/messages/:id", Message.delete.bind(Message));
+
+  app.post("/files", uploader.single("file"), Attachment.create);
+  // app.delete("/files", UploadFileController.delete);
 };

@@ -1,8 +1,6 @@
 import { Request, Response } from "express";
 import { Server } from "socket.io";
-import { DialogModel } from "../models";
-
-import MessageModel from "../models/Message";
+import { DialogModel, MessageModel } from "../models";
 
 class MessageController {
   io: Server;
@@ -28,7 +26,7 @@ class MessageController {
     );
 
     MessageModel.find({ dialog: dialogId })
-      .populate(["user"])
+      .populate(["user", "attachments"])
       .exec((err, messages) => {
         if (err) {
           return res.status(404).json({
@@ -41,11 +39,11 @@ class MessageController {
 
   create(req: Request, res: Response) {
     const userId = req.user?._id as string;
-
-    const { text, dialogId } = req.body;
+    const { text, dialogId, attachments } = req.body;
 
     const message = new MessageModel({
       text,
+      attachments,
       dialog: dialogId,
       user: userId,
     });
@@ -53,7 +51,7 @@ class MessageController {
     message
       .save()
       .then((obj) => {
-        obj.populate("user", (err, message) => {
+        obj.populate("user attachments", (err, message) => {
           if (err) {
             return res.status(500).json({
               message: err,

@@ -1,3 +1,4 @@
+require("dotenv").config();
 import jwt from "jsonwebtoken";
 import _reduce from "lodash/reduce";
 
