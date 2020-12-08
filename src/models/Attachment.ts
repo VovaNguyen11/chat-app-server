@@ -1,6 +1,6 @@
-import { IMessage } from "./Message";
-import { IUser } from "./User";
 import mongoose, { Schema, Document } from "mongoose";
+
+import { IMessage } from "./Message";
 
 export interface IAttachment extends Document {
   fileName: string;
@@ -8,7 +8,6 @@ export interface IAttachment extends Document {
   ext: string;
   url: string;
   message: IMessage | string;
-  user: IUser | string;
 }
 
 const AttachmentSchema: Schema = new Schema(
@@ -17,8 +16,7 @@ const AttachmentSchema: Schema = new Schema(
     size: Number,
     ext: String,
     url: String,
-    message: { type: Schema.Types.ObjectId, ref: "Message", require: true },
-    user: { type: Schema.Types.ObjectId, ref: "User", require: true },
+    message: { type: Schema.Types.ObjectId, ref: "Message" },
   },
   {
     timestamps: true,

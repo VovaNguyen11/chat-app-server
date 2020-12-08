@@ -16,16 +16,16 @@ const UserSchema: Schema = new Schema(
   {
     email: {
       type: String,
-      required: "Email address is required",
+      required: true,
       unique: true,
     },
     fullName: {
       type: String,
-      required: "Full name is required",
+      required: true,
     },
     password: {
       type: String,
-      required: "Password is required",
+      required: true,
     },
     confirmed: {
       type: Boolean,
@@ -46,9 +46,9 @@ const UserSchema: Schema = new Schema(
 UserSchema.pre<IUser>("save", async function (next) {
   const user = this;
 
-  if (!user.isModified("password")) {
-    return next();
-  }
+  // if (!user.isModified("password")) {
+  //   return next();
+  // }
   try {
     user.password = await generatePasswordHash(user.password);
     user.confirmHash = await generatePasswordHash(new Date().toString());

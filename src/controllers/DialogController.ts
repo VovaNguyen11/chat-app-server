@@ -16,12 +16,16 @@ class DialogController {
 
     DialogModel.find()
       .or([{ author: userId }, { partner: userId }])
-      .populate(["author", "partner", "lastMessage"])
+      .populate(["author", "partner"])
+      .populate({
+        path: "lastMessage",
+        populate: {
+          path: "attachments",
+        },
+      })
       .exec((err, dialogs) => {
-        if (err || !dialogs.length) {
-          return res.json({
-            message: "Dialogs not found",
-          });
+        if (err) {
+          return res.status(403).json(err);
         }
         return res.json(dialogs);
       });
@@ -60,9 +64,19 @@ class DialogController {
                 .save()
                 .then(() => {
                   dialogObj.lastMessage = message._id;
-                  dialogObj.save().then(() => {
-                    res.json(dialogObj);
-                    this.io.emit("NEW_DIALOG", dialogObj, req.user);
+                  dialogObj.save().then((dialog) => {
+                    dialog.populate("author partner").populate(
+                      {
+                        path: "lastMessage",
+                        populate: {
+                          path: "attachments",
+                        },
+                      },
+                      (_err, dialog) => {
+                        this.io.emit("NEW_DIALOG", dialog);
+                      }
+                    );
+                    res.json({ message: "Dialog created" });
                   });
                 })
                 .catch((err) => res.json(err));

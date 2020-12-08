@@ -69,7 +69,19 @@ class MessageController {
                 });
               }
             }
-          );
+          ).then((dialog) => {
+            dialog?.populate("author partner").populate(
+              {
+                path: "lastMessage",
+                populate: {
+                  path: "attachments",
+                },
+              },
+              (_err, dialog) => {
+                this.io.emit("DIALOGS: NEW_MESSAGE", dialog);
+              }
+            );
+          });
           res.json(message);
           this.io.emit("NEW_MESSAGE", message);
         });
@@ -81,33 +93,45 @@ class MessageController {
     const _id = req.params.id;
 
     MessageModel.findById({ _id }, (err, message) => {
-      if (err || !message) {
-        return res.status(404).json(err);
+      if (err) {
+        return res.status(500).json(err);
       }
 
-      const dialogId = message.dialog;
+      const dialogId = message?.dialog;
       this.io.emit("REMOVE_MESSAGE", message);
 
-      message.remove();
+      message?.remove();
 
       MessageModel.findOne({ dialog: dialogId })
         .sort({ createdAt: -1 })
         .exec((err, lastMessage) => {
-          if (err || !lastMessage) {
-            return res.status(404).json(err);
+          if (err) {
+            return res.status(500).json(err);
           }
 
-          DialogModel.findById(dialogId, (err, dialog) => {
+          DialogModel.findById(dialogId).exec((err, dialog) => {
             if (err || !dialog) {
-              return res.status(404).json(err);
+              return res.status(500).json(err);
             }
-            dialog.lastMessage = lastMessage._id;
-            dialog.save();
+            dialog.lastMessage = lastMessage?._id;
+
+            dialog.save().then((dialog) => {
+              dialog.populate("author partner").populate(
+                {
+                  path: "lastMessage",
+                  populate: {
+                    path: "attachments",
+                  },
+                },
+                (_err, dialog) => {
+                  this.io.emit("DIALOGS: MESSAGE_REMOVED", dialog);
+                }
+              );
+            });
 
             res.json({
               message: "Message removed successfully",
             });
-            this.io.emit("UPDATE_LAST_MESSAGE", lastMessage);
           });
         });
     });
