@@ -1,6 +1,7 @@
+import bcrypt from "bcrypt";
 import mongoose, { Schema, Document } from "mongoose";
 import differenceInMinutes from "date-fns/differenceInMinutes";
-import { generatePasswordHash } from "../utils";
+// import { generatePasswordHash } from "../utils";
 
 export interface IUser extends Document {
   email: string;
@@ -46,12 +47,12 @@ const UserSchema: Schema = new Schema(
 UserSchema.pre<IUser>("save", async function (next) {
   const user = this;
 
-  // if (!user.isModified("password")) {
-  //   return next();
-  // }
+  if (!user.isModified("password")) {
+    return next(null);
+  }
   try {
-    user.password = await generatePasswordHash(user.password);
-    user.confirmHash = await generatePasswordHash(new Date().toString());
+    user.password = bcrypt.hashSync(user.password, 10);
+    user.confirmHash = bcrypt.hashSync(new Date().toString(), 10);
   } catch (err) {
     next(err);
   }

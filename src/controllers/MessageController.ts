@@ -20,7 +20,7 @@ class MessageController {
         if (err) {
           res.status(500).json(err);
         } else {
-          this.io.emit("MESSAGES_CHECKED", userId, dialogId);
+          this.io.emit("DIALOGS: MESSAGES_CHECKED", dialogId);
         }
       }
     );
@@ -61,27 +61,28 @@ class MessageController {
           DialogModel.findOneAndUpdate(
             { _id: dialogId },
             { lastMessage: message._id },
-            { upsert: true },
-            (err) => {
+            { new: true, upsert: true },
+            (err, dialog) => {
               if (err) {
                 return res.status(500).json({
                   message: err,
                 });
               }
+
+              dialog
+                ?.populate("author partner")
+                .populate({
+                  path: "lastMessage",
+                  populate: {
+                    path: "attachments",
+                  },
+                })
+                .execPopulate((_err, dialog) => {
+                  this.io.emit("DIALOGS: NEW_MESSAGE", dialog);
+                });
             }
-          ).then((dialog) => {
-            dialog?.populate("author partner").populate(
-              {
-                path: "lastMessage",
-                populate: {
-                  path: "attachments",
-                },
-              },
-              (_err, dialog) => {
-                this.io.emit("DIALOGS: NEW_MESSAGE", dialog);
-              }
-            );
-          });
+          );
+
           res.json(message);
           this.io.emit("NEW_MESSAGE", message);
         });

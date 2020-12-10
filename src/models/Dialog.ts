@@ -4,9 +4,9 @@ import { IMessage } from "./Message";
 import { IUser } from "./User";
 
 export interface IDialog extends Document {
+  _id: string;
   partner: IUser | string;
   author: IUser | string;
-  messages: IMessage[];
   lastMessage: IMessage;
 }
 

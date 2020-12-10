@@ -6,6 +6,7 @@ import { UserModel } from "../models";
 import { IUser } from "./../models/User";
 
 import { createJWT } from "../utils";
+import mailer from "../core/mailer";
 
 class UserController {
   io: Server;
@@ -17,7 +18,7 @@ class UserController {
   signin(req: Request, res: Response) {
     const { email, password } = req.body;
 
-    UserModel.findOne({ email: email }, (err, user: IUser) => {
+    UserModel.findOne({ email: email }, (err, user) => {
       if (err || !user) {
         return res.status(404).json({
           message: "User not found",
@@ -72,7 +73,24 @@ class UserController {
       const user = new UserModel({ email, fullName, password });
       user
         .save()
-        .then((data) => res.json(data))
+        .then((data) => {
+          res.json(data);
+          mailer.sendMail(
+            {
+              from: "messenger.datnguyen@gmail.com",
+              to: email,
+              subject: "Email confirmation",
+              html: `Please, confirm your email by clicking <a href="http://localhost:3000/signup/verify?hash=${data.confirmHash}">on this link</a>`,
+            },
+            (err, info) => {
+              if (err) {
+                console.log(err);
+              } else {
+                console.log(info);
+              }
+            }
+          );
+        })
         .catch((err) => res.json(err));
     }
   }
@@ -94,7 +112,6 @@ class UserController {
             if (err) {
               return res.status(404).json(err);
             }
-
             res.json({ message: "Account confirmed successfully!" });
           });
         }
