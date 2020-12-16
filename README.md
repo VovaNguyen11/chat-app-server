@@ -4,7 +4,7 @@ This is the chat application server using Socket.io. The chat provides the abili
 
 ## Live Demo
 
-[Demo](https://messenger-app-mern.herokuapp.com)
+[Demo](https://messenger-app-client.herokuapp.com)
 (Note: use the email that you have access for confirmation)
 
 ## Tech stack

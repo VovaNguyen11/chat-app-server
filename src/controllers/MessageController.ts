@@ -20,7 +20,7 @@ class MessageController {
         if (err) {
           res.status(500).json(err);
         } else {
-          this.io.emit("DIALOGS: MESSAGES_CHECKED", dialogId);
+          this.io.emit("MESSAGES_CHECKED", dialogId, userId);
         }
       }
     );
